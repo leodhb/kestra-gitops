@@ -148,7 +148,7 @@ jobs:
   # Deploy namespace files usando bin/kestra.sh (contorna bug da action)
   deploy-files:
     if: github.event_name == 'push' && needs.discover-changed-file-namespaces.outputs.has_changes == 'true'
-    needs: [deploy-flows, discover-changed-file-namespaces]
+    needs: discover-changed-file-namespaces
     runs-on: ubuntu-latest
     environment: Production
     strategy:

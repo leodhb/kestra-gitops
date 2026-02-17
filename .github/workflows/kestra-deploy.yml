@@ -22,119 +22,107 @@ jobs:
       - name: Validate structure
         run: ./.githooks/validate-kestra-structure.sh
 
-  # Deploy de flows
-  deploy-flows:
+  # Descobrir namespaces de flows
+  discover-flow-namespaces:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
-    environment: Production
+    outputs:
+      namespaces: ${{ steps.find-namespaces.outputs.namespaces }}
     steps:
       - uses: actions/checkout@v3
       
-      - name: Deploy flows to Kestra
-        env:
-          KESTRA_HOST: ${{ secrets.KESTRA_HOST }}
-          KESTRA_USER: ${{ secrets.KESTRA_USER }}
-          KESTRA_PASSWORD: ${{ secrets.KESTRA_PASSWORD }}
+      - name: Find flow namespaces
+        id: find-namespaces
         run: |
-          #!/bin/bash
-          set -e
-          
-          echo "🚀 Deploying flows to Kestra..."
-          
           FLOWS_DIR="kestra/flows"
           
           if [ ! -d "$FLOWS_DIR" ]; then
-            echo "No flows directory found, skipping"
+            echo "namespaces=[]" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           
-          # Função para descobrir namespaces únicos
-          discover_namespaces() {
-            find "$FLOWS_DIR" -type f \( -name "*.yml" -o -name "*.yaml" \) | while read -r file; do
-              local dir=$(dirname "$file")
-              local relative_dir="${dir#$FLOWS_DIR/}"
-              
-              # Converter caminho em namespace
-              local namespace=$(echo "$relative_dir" | tr '/' '.')
-              
-              echo "$namespace|$dir"
-            done | sort -u
-          }
+          # Descobrir todos os diretórios únicos que contêm flows
+          namespaces=$(find "$FLOWS_DIR" -type f \( -name "*.yml" -o -name "*.yaml" \) -exec dirname {} \; | sort -u | while read -r dir; do
+            relative_dir="${dir#$FLOWS_DIR/}"
+            namespace=$(echo "$relative_dir" | tr '/' '.')
+            echo "{\"namespace\":\"$namespace\",\"directory\":\"$dir\"}"
+          done | jq -s -c .)
           
-          # Deploy para cada namespace descoberto
-          while IFS='|' read -r namespace dir; do
-            echo ""
-            echo "📦 Deploying namespace: $namespace"
-            echo "   Directory: $dir"
-            
-            ./bin/kestra.sh flow namespace update \
-              --server "$KESTRA_HOST" \
-              --user "$KESTRA_USER:$KESTRA_PASSWORD" \
-              "$namespace" \
-              "$dir"
-            
-            echo "✅ Namespace $namespace deployed successfully"
-          done < <(discover_namespaces)
-          
-          echo ""
-          echo "✅ All flows deployed successfully!"
+          echo "namespaces=$namespaces" >> "$GITHUB_OUTPUT"
+          echo "Found namespaces: $namespaces"
 
-  # Deploy de files
-  deploy-files:
+  # Deploy flows por namespace
+  deploy-flows:
     if: github.event_name == 'push'
+    needs: discover-flow-namespaces
     runs-on: ubuntu-latest
     environment: Production
-    needs: deploy-flows
+    strategy:
+      matrix:
+        namespace-config: ${{ fromJson(needs.discover-flow-namespaces.outputs.namespaces) }}
     steps:
       - uses: actions/checkout@v3
       
-      - name: Deploy namespace files
-        env:
-          KESTRA_HOST: ${{ secrets.KESTRA_HOST }}
-          KESTRA_USER: ${{ secrets.KESTRA_USER }}
-          KESTRA_PASSWORD: ${{ secrets.KESTRA_PASSWORD }}
+      - name: Deploy flows for ${{ matrix.namespace-config.namespace }}
+        uses: kestra-io/deploy-action@v0.22.0
+        with:
+          namespace: ${{ matrix.namespace-config.namespace }}
+          resource: flow
+          directory: ${{ matrix.namespace-config.directory }}
+          server: ${{ secrets.KESTRA_HOST }}
+          user: ${{ secrets.KESTRA_USER }}
+          password: ${{ secrets.KESTRA_PASSWORD }}
+          delete: false
+
+  # Descobrir namespaces de files
+  discover-file-namespaces:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      namespaces: ${{ steps.find-namespaces.outputs.namespaces }}
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Find file namespaces
+        id: find-namespaces
         run: |
-          #!/bin/bash
-          set -e
-          
-          echo "📁 Deploying namespace files..."
-          
           FILES_DIR="kestra/files"
           
           if [ ! -d "$FILES_DIR" ]; then
-            echo "No files directory found, skipping"
+            echo "namespaces=[]" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           
-          # Função para fazer upload de arquivos de um namespace
-          upload_namespace_files() {
-            local namespace_path=$1
-            local namespace=$(echo "$namespace_path" | sed "s|^${FILES_DIR}/||" | tr '/' '.')
-            
-            echo ""
-            echo "📦 Namespace: $namespace"
-            
-            # Encontrar todos os arquivos neste namespace
-            find "$namespace_path" -type f | while read -r file; do
-              # Caminho relativo ao namespace
-              local rel_path="${file#$namespace_path/}"
-              
-              echo "  ↗ Uploading: $rel_path"
-              
-              # Upload usando Kestra CLI via Docker wrapper
-              ./bin/kestra.sh namespace files update \
-                --server "$KESTRA_HOST" \
-                --user "$KESTRA_USER:$KESTRA_PASSWORD" \
-                "$namespace" \
-                "$rel_path" \
-                "$file"
-            done
-          }
+          # Descobrir todos os namespaces de primeiro nível em files/
+          namespaces=$(find "$FILES_DIR" -mindepth 1 -type d | while read -r dir; do
+            relative_dir="${dir#$FILES_DIR/}"
+            namespace=$(echo "$relative_dir" | tr '/' '.')
+            echo "{\"namespace\":\"$namespace\",\"directory\":\"$dir\"}"
+          done | jq -s -c .)
           
-          # Iterar por todos os namespaces (diretórios de primeiro nível)
-          find "$FILES_DIR" -mindepth 1 -type d | while read -r namespace_dir; do
-            upload_namespace_files "$namespace_dir"
-          done
-          
-          echo ""
-          echo "✅ All files deployed successfully!"
+          echo "namespaces=$namespaces" >> "$GITHUB_OUTPUT"
+          echo "Found file namespaces: $namespaces"
+
+  # Deploy namespace files por namespace
+  deploy-files:
+    if: github.event_name == 'push'
+    needs: [deploy-flows, discover-file-namespaces]
+    runs-on: ubuntu-latest
+    environment: Production
+    strategy:
+      matrix:
+        namespace-config: ${{ fromJson(needs.discover-file-namespaces.outputs.namespaces) }}
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Deploy files for ${{ matrix.namespace-config.namespace }}
+        uses: kestra-io/deploy-action@v0.22.0
+        with:
+          namespace: ${{ matrix.namespace-config.namespace }}
+          resource: namespace_files
+          directory: ${{ matrix.namespace-config.directory }}
+          to: /
+          server: ${{ secrets.KESTRA_HOST }}
+          user: ${{ secrets.KESTRA_USER }}
+          password: ${{ secrets.KESTRA_PASSWORD }}
+          delete: false

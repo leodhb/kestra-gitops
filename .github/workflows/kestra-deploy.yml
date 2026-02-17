@@ -22,44 +22,65 @@ jobs:
       - name: Validate structure
         run: ./.githooks/validate-kestra-structure.sh
 
-  # Descobrir namespaces de flows
-  discover-flow-namespaces:
+  # Descobrir namespaces de flows que mudaram
+  discover-changed-flow-namespaces:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     outputs:
       namespaces: ${{ steps.find-namespaces.outputs.namespaces }}
+      has_changes: ${{ steps.find-namespaces.outputs.has_changes }}
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: 2  # Precisamos do commit anterior para diff
       
-      - name: Find flow namespaces
+      - name: Find changed flow namespaces
         id: find-namespaces
         run: |
           FLOWS_DIR="kestra/flows"
           
           if [ ! -d "$FLOWS_DIR" ]; then
             echo "namespaces=[]" >> "$GITHUB_OUTPUT"
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           
-          # Descobrir todos os diretórios únicos que contêm flows
-          namespaces=$(find "$FLOWS_DIR" -type f \( -name "*.yml" -o -name "*.yaml" \) -exec dirname {} \; | sort -u | while read -r dir; do
-            relative_dir="${dir#$FLOWS_DIR/}"
-            namespace=$(echo "$relative_dir" | tr '/' '.')
-            echo "{\"namespace\":\"$namespace\",\"directory\":\"$dir\"}"
-          done | jq -s -c .)
+          # Pegar arquivos de flows modificados no último push
+          changed_files=$(git diff --name-only HEAD~1 HEAD -- "$FLOWS_DIR" | grep -E '\.(yml|yaml)$' || true)
+          
+          if [ -z "$changed_files" ]; then
+            echo "No flow changes detected"
+            echo "namespaces=[]" >> "$GITHUB_OUTPUT"
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          
+          echo "Changed flows:"
+          echo "$changed_files"
+          
+          # Descobrir namespaces únicos dos arquivos modificados
+          namespaces=$(echo "$changed_files" | while read -r file; do
+            if [ -f "$file" ]; then
+              dir=$(dirname "$file")
+              relative_dir="${dir#$FLOWS_DIR/}"
+              namespace=$(echo "$relative_dir" | tr '/' '.')
+              echo "{\"namespace\":\"$namespace\",\"directory\":\"$dir\"}"
+            fi
+          done | sort -u | jq -s -c .)
           
           echo "namespaces=$namespaces" >> "$GITHUB_OUTPUT"
-          echo "Found namespaces: $namespaces"
+          echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          echo "Detected changed namespaces: $namespaces"
 
-  # Deploy flows por namespace
+  # Deploy flows apenas dos namespaces que mudaram
   deploy-flows:
-    if: github.event_name == 'push'
-    needs: discover-flow-namespaces
+    if: github.event_name == 'push' && needs.discover-changed-flow-namespaces.outputs.has_changes == 'true'
+    needs: discover-changed-flow-namespaces
     runs-on: ubuntu-latest
     environment: Production
     strategy:
       matrix:
-        namespace-config: ${{ fromJson(needs.discover-flow-namespaces.outputs.namespaces) }}
+        namespace-config: ${{ fromJson(needs.discover-changed-flow-namespaces.outputs.namespaces) }}
     steps:
       - uses: actions/checkout@v3
       
@@ -74,58 +95,86 @@ jobs:
           password: ${{ secrets.KESTRA_PASSWORD }}
           delete: false
 
-  # Descobrir namespaces de files
-  discover-file-namespaces:
+  # Descobrir namespaces de files que mudaram
+  discover-changed-file-namespaces:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     outputs:
       namespaces: ${{ steps.find-namespaces.outputs.namespaces }}
+      has_changes: ${{ steps.find-namespaces.outputs.has_changes }}
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: 2
       
-      - name: Find file namespaces
+      - name: Find changed file namespaces
         id: find-namespaces
         run: |
           FILES_DIR="kestra/files"
           
           if [ ! -d "$FILES_DIR" ]; then
             echo "namespaces=[]" >> "$GITHUB_OUTPUT"
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           
-          # Descobrir apenas diretórios que contêm arquivos (folhas da árvore)
-          namespaces=$(find "$FILES_DIR" -type f | while read -r file; do
-            dir=$(dirname "$file")
-            echo "$dir"
-          done | sort -u | while read -r dir; do
-            relative_dir="${dir#$FILES_DIR/}"
-            namespace=$(echo "$relative_dir" | tr '/' '.')
-            echo "{\"namespace\":\"$namespace\",\"directory\":\"$dir\"}"
-          done | jq -s -c .)
+          # Pegar arquivos modificados em files/ no último push
+          changed_files=$(git diff --name-only HEAD~1 HEAD -- "$FILES_DIR" || true)
+          
+          if [ -z "$changed_files" ]; then
+            echo "No file changes detected"
+            echo "namespaces=[]" >> "$GITHUB_OUTPUT"
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          
+          echo "Changed files:"
+          echo "$changed_files"
+          
+          # Descobrir namespaces únicos (diretórios que contêm os arquivos)
+          namespaces=$(echo "$changed_files" | while read -r file; do
+            if [ -f "$file" ]; then
+              dir=$(dirname "$file")
+              relative_dir="${dir#$FILES_DIR/}"
+              namespace=$(echo "$relative_dir" | tr '/' '.')
+              echo "{\"namespace\":\"$namespace\",\"directory\":\"$dir\"}"
+            fi
+          done | sort -u | jq -s -c .)
           
           echo "namespaces=$namespaces" >> "$GITHUB_OUTPUT"
-          echo "Found file namespaces: $namespaces"
+          echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          echo "Detected changed file namespaces: $namespaces"
 
-  # Deploy namespace files por namespace
+  # Deploy namespace files usando bin/kestra.sh (contorna bug da action)
   deploy-files:
-    if: github.event_name == 'push'
-    needs: [deploy-flows, discover-file-namespaces]
+    if: github.event_name == 'push' && needs.discover-changed-file-namespaces.outputs.has_changes == 'true'
+    needs: [deploy-flows, discover-changed-file-namespaces]
     runs-on: ubuntu-latest
     environment: Production
     strategy:
       matrix:
-        namespace-config: ${{ fromJson(needs.discover-file-namespaces.outputs.namespaces) }}
+        namespace-config: ${{ fromJson(needs.discover-changed-file-namespaces.outputs.namespaces) }}
     steps:
       - uses: actions/checkout@v3
       
       - name: Deploy files for ${{ matrix.namespace-config.namespace }}
-        uses: kestra-io/deploy-action@v0.22.0
-        with:
-          namespace: ${{ matrix.namespace-config.namespace }}
-          resource: namespace_files
-          directory: ${{ matrix.namespace-config.directory }}
-          to: /
-          server: ${{ secrets.KESTRA_HOST }}
-          user: ${{ secrets.KESTRA_USER }}
-          password: ${{ secrets.KESTRA_PASSWORD }}
-          delete: false
+        env:
+          KESTRA_HOST: ${{ secrets.KESTRA_HOST }}
+          KESTRA_USER: ${{ secrets.KESTRA_USER }}
+          KESTRA_PASSWORD: ${{ secrets.KESTRA_PASSWORD }}
+        run: |
+          namespace="${{ matrix.namespace-config.namespace }}"
+          directory="${{ matrix.namespace-config.directory }}"
+          
+          echo "📦 Deploying files to namespace: $namespace"
+          echo "   Directory: $directory"
+          
+          # Usar bin/kestra.sh (funciona, ao contrário da action)
+          ./bin/kestra.sh namespace files update \
+            --server "$KESTRA_HOST" \
+            --user "$KESTRA_USER:$KESTRA_PASSWORD" \
+            "$namespace" \
+            "$directory" \
+            /
+          
+          echo "✅ Files deployed successfully for namespace: $namespace"

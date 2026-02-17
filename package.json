@@ -1,0 +1,13 @@
+{
+  "name": "kestra-gitops",
+  "version": "1.0.0",
+  "description": "Kestra GitOps boilerplate with validation hooks",
+  "private": true,
+  "scripts": {
+    "prepare": "husky",
+    "validate": "bash ./.githooks/validate-kestra-structure.sh"
+  },
+  "devDependencies": {
+    "husky": "^9.0.11"
+  }
+}

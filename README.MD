@@ -2,6 +2,27 @@
 
 Boilerplate para versionar flows do Kestra com validação local via Docker e deploy automático por GitHub Actions.
 
+## Pré-requisitos
+
+- Docker instalado e rodando
+- Node.js e npm (para Git hooks automáticos)
+
+## Setup inicial
+
+```bash
+# 1. Clonar o repositório
+git clone <seu-repo>
+cd kestra-gitops-test
+
+# 2. Instalar dependências (configura hooks automaticamente)
+npm install
+
+# 3. Validar que está tudo OK
+npm run validate
+```
+
+Após o `npm install`, o **pre-commit hook** é instalado automaticamente via Husky. Toda vez que você commitar, a validação roda automaticamente.
+
 ## Estrutura do projeto
 
 ```
@@ -67,6 +88,28 @@ bash ./.githooks/validate-kestra-structure.sh
 O workflow descobre dinamicamente todos os namespaces e faz deploy de cada um.
 
 ## Comandos úteis
+
+### Validar manualmente
+
+```bash
+# Via npm script
+npm run validate
+
+# Ou diretamente
+bash ./.githooks/validate-kestra-structure.sh
+```
+
+### Git hooks
+
+O projeto usa **Husky** para rodar validação automática antes de cada commit:
+- ✅ Valida estrutura de pastas/namespaces
+- ✅ Valida sintaxe YAML dos flows
+- ❌ Bloqueia commit se houver erros
+
+Para bypassar (use com cuidado):
+```bash
+git commit --no-verify -m "mensagem"
+```
 
 ### Validar sintaxe de um flow
 

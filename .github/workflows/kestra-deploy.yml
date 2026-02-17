@@ -38,7 +38,7 @@ jobs:
 
       - name: Deploy prod flows
         if: steps.flow-envs.outputs.has_prod == 'true'
-        uses: kestra-io/deploy-action@v1
+        uses: kestra-io/deploy-action@v0.22.0
         with:
           namespace: prod
           resource: flow
@@ -50,7 +50,7 @@ jobs:
 
       - name: Deploy staging flows
         if: steps.flow-envs.outputs.has_staging == 'true'
-        uses: kestra-io/deploy-action@v1
+        uses: kestra-io/deploy-action@v0.22.0
         with:
           namespace: staging
           resource: flow

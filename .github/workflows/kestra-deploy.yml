@@ -30,9 +30,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       
-      - name: Install Kestra CLI
-        run: curl -s https://get.kestra.io | bash
-      
       - name: Deploy flows to Kestra
         env:
           KESTRA_HOST: ${{ secrets.KESTRA_HOST }}
@@ -70,7 +67,7 @@ jobs:
             echo "📦 Deploying namespace: $namespace"
             echo "   Directory: $dir"
             
-            kestra flow namespace update \
+            ./bin/kestra.sh flow namespace update \
               --server "$KESTRA_HOST" \
               --user "$KESTRA_USER:$KESTRA_PASSWORD" \
               "$namespace" \
@@ -90,9 +87,6 @@ jobs:
     needs: deploy-flows
     steps:
       - uses: actions/checkout@v3
-      
-      - name: Install Kestra CLI
-        run: curl -s https://get.kestra.io | bash
       
       - name: Deploy namespace files
         env:
@@ -127,8 +121,8 @@ jobs:
               
               echo "  ↗ Uploading: $rel_path"
               
-              # Upload usando Kestra CLI
-              kestra namespace files update \
+              # Upload usando Kestra CLI via Docker wrapper
+              ./bin/kestra.sh namespace files update \
                 --server "$KESTRA_HOST" \
                 --user "$KESTRA_USER:$KESTRA_PASSWORD" \
                 "$namespace" \

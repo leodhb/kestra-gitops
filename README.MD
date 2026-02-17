@@ -21,7 +21,7 @@ Boilerplate for versioning Kestra flows with local Docker validation and automat
 ```bash
 # 1. Clone the repository
 git clone <your-repo>
-cd kestra-gitops-test
+cd kestra-gitops
 
 # 2. Install dependencies (automatically configures hooks)
 npm install
@@ -35,7 +35,7 @@ After `npm install`, the **pre-commit hook** is automatically installed via Husk
 ## Project Structure
 
 ```
-kestra-gitops-test/
+kestra-gitops/
 ├── bin/
 │   └── kestra.sh                 # Docker wrapper for Kestra CLI
 ├── scripts/

@@ -23,8 +23,8 @@ Thank you for your interest in contributing! 🎉
 
 ```bash
 # Clone your fork
-git clone https://github.com/YOUR_USERNAME/kestra-gitops-boilerplate
-cd kestra-gitops-boilerplate
+git clone https://github.com/YOUR_USERNAME/kestra-gitops
+cd kestra-gitops
 
 # Install dependencies
 npm install

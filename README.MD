@@ -18,19 +18,36 @@ Boilerplate for versioning Kestra flows with local Docker validation and automat
 
 ## Initial Setup
 
+### 1. Local Setup
+
 ```bash
-# 1. Clone the repository
+# Clone the repository
 git clone <your-repo>
 cd kestra-gitops
 
-# 2. Install dependencies (automatically configures hooks)
+# Install dependencies (automatically configures hooks)
 npm install
 
-# 3. Validate everything is OK
+# Validate everything is OK
 npm run validate
 ```
 
 After `npm install`, the **pre-commit hook** is automatically installed via Husky. Every time you commit, validation (`scripts/validate.sh`) runs automatically.
+
+### 2. GitHub Environment Configuration (Required for Deployment)
+
+Before pushing to `prod` branch, configure the **Production** environment in GitHub:
+
+1. Go to your repository **Settings** → **Environments** → **New environment**
+2. Create environment named: `Production`
+3. Add the following **secrets**:
+   - `KESTRA_HOST`: Your Kestra server URL (e.g., `https://kestra.example.com`)
+   - `KESTRA_USER`: Email or username for authentication
+   - `KESTRA_PASSWORD`: Password for authentication
+
+**Without these secrets configured, deployments will fail.** This is expected behavior - the template requires you to configure your own Kestra instance.
+
+For detailed instructions, see: **[docs/adding-environments.md](docs/adding-environments.md)**
 
 ## Project Structure
 
@@ -94,12 +111,13 @@ npm run validate
 ./scripts/validate.sh
 ```
 
-### Automatic Deployment
+### Automatic Deployment (CI/CD)
 
-- Push to **`prod`** branch → deploy to production server (environment `Production`)
+After configuring the GitHub Environment (see [Initial Setup](#2-github-environment-configuration-required-for-deployment)):
+
+- Push to **`prod`** branch → automatic deployment to Production
 - Pull requests → validation only (no deployment)
-
-The workflow dynamically discovers all namespaces and deploys each one.
+- Only changed namespaces are deployed (optimized for performance)
 
 ## Useful Commands
 
@@ -146,16 +164,17 @@ alias kestra='./bin/kestra.sh'
 kestra --version
 ```
 
-## GitHub Actions and Environments
+## GitHub Actions Deployment
 
-The repository uses **GitHub Environments** to separate credentials by environment:
+### How It Works
 
-- Environment **Production** (branch `prod`)
-  - `KESTRA_HOST`: Kestra server URL
-  - `KESTRA_USER`: Email/username
-  - `KESTRA_PASSWORD`: Password
+- Push to **`prod`** branch → automatic deployment to Production environment
+- Pull requests → validation only (no deployment)
+- The workflow dynamically discovers changed namespaces and deploys only what changed
 
-To add new environments (staging, dev), see: **[docs/adding-environments.md](docs/adding-environments.md)**
+### Adding More Environments
+
+To add staging, dev, or other environments, see: **[docs/adding-environments.md](docs/adding-environments.md)**
 
 ## Adding New Flows
 

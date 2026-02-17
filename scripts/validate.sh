@@ -85,7 +85,7 @@ run_kestra_validate_file() {
     return 1
 }
 
-# Validate flows
+# Validate flows convention
 if [ -d "$FLOWS_DIR" ]; then
     echo "🔍 Validating flows..."
     while IFS= read -r file; do
@@ -95,6 +95,14 @@ fi
 
 # Validate files
 validate_files
+
+# Check if there were errors in static validation
+if [ $ERRORS -gt 0 ]; then
+    echo ""
+    echo "❌ Found $ERRORS error(s) in static validation"
+    echo "⚠️  Skipping Docker syntax validation until static errors are fixed"
+    exit 1
+fi
 
 # Syntax validation with Kestra in Docker (always ephemeral container)
 echo ""

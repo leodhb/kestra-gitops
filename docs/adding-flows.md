@@ -1,50 +1,50 @@
-# Adicionando novos flows
+# Adding New Flows
 
-Este guia explica como adicionar novos flows ao repositório seguindo a convenção de estrutura de pastas e namespaces.
+This guide explains how to add new flows to the repository following the folder structure and namespace convention.
 
-## Regra de mapeamento
+## Mapping Rule
 
-A estrutura de pastas determina automaticamente o namespace do flow:
+The folder structure automatically determines the flow namespace:
 
 ```
-kestra/flows/PARTE1/PARTE2/PARTE3/nome_do_flow.yml
+kestra/flows/PART1/PART2/PART3/flow_name.yml
                 ↓
-namespace: PARTE1.PARTE2.PARTE3
-id: nome_do_flow
+namespace: PART1.PART2.PART3
+id: flow_name
 ```
 
-### Exemplos
+### Examples
 
-| Caminho do arquivo | Namespace esperado | ID esperado |
+| File Path | Expected Namespace | Expected ID |
 |-------------------|-------------------|-------------|
 | `kestra/flows/watxer/_services/github/search_repositories.yml` | `watxer._services.github` | `search_repositories` |
 | `kestra/flows/watxer/pipelines/daily_sync.yml` | `watxer.pipelines` | `daily_sync` |
 | `kestra/flows/analytics/reports/monthly.yml` | `analytics.reports` | `monthly` |
 
-## Passo a passo
+## Step by Step
 
-### 1. Criar a estrutura de pastas
+### 1. Create Folder Structure
 
-Organize os flows por namespace lógico. Recomendações:
+Organize flows by logical namespace. Recommendations:
 
-- Use o nome da empresa/projeto como raiz (ex: `watxer/`)
-- Agrupe flows relacionados em subpastas (ex: `_services/`, `pipelines/`)
-- Use nomes descritivos e em minúsculas com underscore
+- Use company/project name as root (e.g., `watxer/`)
+- Group related flows in subfolders (e.g., `_services/`, `pipelines/`)
+- Use descriptive names in lowercase with underscores
 
 ```bash
 mkdir -p kestra/flows/watxer/pipelines
 ```
 
-### 2. Criar o arquivo do flow
+### 2. Create Flow File
 
-Crie o arquivo `.yml` com o nome igual ao `id` desejado:
+Create the `.yml` file with the name matching the desired `id`:
 
 ```yaml
 # kestra/flows/watxer/pipelines/daily_sync.yml
 id: daily_sync
 namespace: watxer.pipelines
 
-description: Sincronização diária de dados
+description: Daily data synchronization
 
 tasks:
   - id: fetch_data
@@ -57,98 +57,98 @@ tasks:
       print("Processing data...")
 ```
 
-**IMPORTANTE**: O `namespace` e o `id` no YAML **devem** bater com a convenção de pastas. O hook de validação vai rejeitar se não baterem.
+**IMPORTANT**: The `namespace` and `id` in the YAML **must** match the folder convention. The validation hook will reject if they don't match.
 
-### 3. Validar localmente
+### 3. Validate Locally
 
-Antes de commitar, rode o script de validação:
+Before committing, run the validation script:
 
 ```bash
-bash ./.githooks/validate-kestra-structure.sh
+npm run validate
 ```
 
-O script valida:
-- ✅ `id` do flow = nome do arquivo
-- ✅ `namespace` do flow = caminho da pasta (convertido com `.`)
-- ✅ Sintaxe YAML válida (via Docker)
+The script validates:
+- ✅ Flow `id` = file name
+- ✅ Flow `namespace` = folder path (converted with `.`)
+- ✅ Valid YAML syntax (via Docker)
 
-### 4. Testar sintaxe manualmente (opcional)
+### 4. Test Syntax Manually (Optional)
 
-Use o wrapper Docker para validar um flow específico:
+Use the Docker wrapper to validate a specific flow:
 
 ```bash
 ./bin/kestra.sh flow validate --local kestra/flows/watxer/pipelines/daily_sync.yml
 ```
 
-### 5. Commitar e fazer push
+### 5. Commit and Push
 
 ```bash
 git add kestra/flows/watxer/pipelines/daily_sync.yml
 git commit -m "Add daily sync pipeline"
-git push origin staging  # ou prod, dependendo do ambiente
+git push origin staging  # or prod, depending on environment
 ```
 
-O GitHub Actions vai:
-1. Validar a estrutura (se for PR)
-2. Deployar automaticamente para o Kestra (se for push em `prod` ou `staging`)
+GitHub Actions will:
+1. Validate structure (if PR)
+2. Automatically deploy to Kestra (if push to `prod` or `staging`)
 
-## Convenções de nomenclatura
+## Naming Conventions
 
 ### Namespaces
 
-- Use nomes curtos e descritivos
-- Prefira minúsculas
-- Use underscore `_` se necessário (ex: `_services`)
-- Evite muitos níveis (máximo 4-5 recomendado)
+- Use short, descriptive names
+- Prefer lowercase
+- Use underscore `_` if needed (e.g., `_services`)
+- Avoid too many levels (maximum 4-5 recommended)
 
-**Bom:**
+**Good:**
 - `watxer._services.github`
 - `analytics.reports`
 - `etl.daily`
 
-**Evitar:**
-- `MyCompany.Services.Integration.External.GitHub` (muito longo)
-- `temp` (não descritivo)
+**Avoid:**
+- `MyCompany.Services.Integration.External.GitHub` (too long)
+- `temp` (not descriptive)
 
-### IDs de flows
+### Flow IDs
 
-- Use snake_case (minúsculas com underscore)
-- Seja descritivo sobre o que o flow faz
-- Evite IDs genéricos como `flow1`, `test`
+- Use snake_case (lowercase with underscores)
+- Be descriptive about what the flow does
+- Avoid generic IDs like `flow1`, `test`
 
-**Bom:**
+**Good:**
 - `search_repositories`
 - `send_slack_notification`
 - `monthly_report`
 
-**Evitar:**
-- `flow1` (não descritivo)
+**Avoid:**
+- `flow1` (not descriptive)
 - `SearchRepositories` (use snake_case)
-- `temp_test` (temporário)
+- `temp_test` (temporary)
 
-## Organizando flows por tipo
+## Organizing Flows by Type
 
-### Por domínio de negócio
-
-```
-kestra/flows/
-  watxer/
-    sales/          # Flows de vendas
-    marketing/      # Flows de marketing
-    analytics/      # Flows de análise
-```
-
-### Por função técnica
+### By Business Domain
 
 ```
 kestra/flows/
   watxer/
-    _services/      # Integrações com APIs externas
-    pipelines/      # ETL e processamento de dados
-    notifications/  # Envio de alertas
+    sales/          # Sales flows
+    marketing/       # Marketing flows
+    analytics/       # Analytics flows
 ```
 
-### Misto (recomendado)
+### By Technical Function
+
+```
+kestra/flows/
+  watxer/
+    _services/      # External API integrations
+    pipelines/      # ETL and data processing
+    notifications/  # Alert sending
+```
+
+### Mixed (Recommended)
 
 ```
 kestra/flows/
@@ -164,9 +164,9 @@ kestra/flows/
       reports/
 ```
 
-## Namespace Files (arquivos estáticos)
+## Namespace Files (Static Files)
 
-Se o flow usar arquivos estáticos (configs, scripts, etc), coloque em `kestra/files/` seguindo o mesmo namespace:
+If the flow uses static files (configs, scripts, etc), place them in `kestra/files/` following the same namespace:
 
 ```
 kestra/
@@ -177,11 +177,11 @@ kestra/
   files/
     watxer/
       pipelines/
-        config.json              # Acessível pelo flow via namespace files
+        config.json              # Accessible by flow via namespace files
         transform_script.py
 ```
 
-No flow, acesse via:
+In the flow, access via:
 
 ```yaml
 tasks:
@@ -193,28 +193,28 @@ tasks:
 
 ## Troubleshooting
 
-### Erro: namespace mismatch
+### Error: namespace mismatch
 
 ```
 ❌ kestra/flows/watxer/pipelines/daily_sync.yml
    Namespace mismatch: expected 'watxer.pipelines', got 'watxer.pipeline'
 ```
 
-**Solução**: Corrija o `namespace` no YAML para bater com o caminho da pasta.
+**Solution**: Fix the `namespace` in the YAML to match the folder path.
 
-### Erro: ID mismatch
+### Error: ID mismatch
 
 ```
 ❌ kestra/flows/watxer/pipelines/daily_sync.yml
    ID mismatch: expected 'daily_sync', got 'daily-sync'
 ```
 
-**Solução**: Renomeie o arquivo ou corrija o `id` no YAML.
+**Solution**: Rename the file or fix the `id` in the YAML.
 
-### Sintaxe inválida
+### Invalid Syntax
 
 ```
 ❌ Syntax validation failed: kestra/flows/watxer/pipelines/daily_sync.yml
 ```
 
-**Solução**: Rode `./bin/kestra.sh flow validate --local <arquivo>` para ver o erro detalhado.
+**Solution**: Run `./bin/kestra.sh flow validate --local <file>` to see detailed error.

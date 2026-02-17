@@ -1,162 +1,164 @@
 # Kestra GitOps Boilerplate
 
-Boilerplate para versionar flows do Kestra com validação local via Docker e deploy automático por GitHub Actions.
+Boilerplate for versioning Kestra flows with local Docker validation and automatic deployment via GitHub Actions.
 
-## Pré-requisitos
+## Prerequisites
 
-- Docker instalado e rodando
-- Node.js e npm (para Git hooks automáticos)
+- Docker installed and running
+- Node.js and npm (for automatic Git hooks)
 
-## Setup inicial
+## Initial Setup
 
 ```bash
-# 1. Clonar o repositório
-git clone <seu-repo>
+# 1. Clone the repository
+git clone <your-repo>
 cd kestra-gitops-test
 
-# 2. Instalar dependências (configura hooks automaticamente)
+# 2. Install dependencies (automatically configures hooks)
 npm install
 
-# 3. Validar que está tudo OK
+# 3. Validate everything is OK
 npm run validate
 ```
 
-Após o `npm install`, o **pre-commit hook** é instalado automaticamente via Husky. Toda vez que você commitar, a validação (`scripts/validate.sh`) roda automaticamente.
+After `npm install`, the **pre-commit hook** is automatically installed via Husky. Every time you commit, validation (`scripts/validate.sh`) runs automatically.
 
-## Estrutura do projeto
+## Project Structure
 
 ```
 kestra-gitops-test/
 ├── bin/
-│   └── kestra.sh                 # Wrapper Docker para CLI do Kestra
+│   └── kestra.sh                 # Docker wrapper for Kestra CLI
 ├── scripts/
-│   └── validate.sh               # Script de validação (pre-commit)
+│   └── validate.sh               # Validation script (pre-commit)
 ├── kestra/
-│   ├── flows/                    # Flows organizados por namespace
+│   ├── flows/                    # Flows organized by namespace
 │   │   └── watxer/
 │   │       └── _services/
 │   │           └── github/
 │   │               └── search_repositories.yml
-│   └── files/                    # Namespace files (opcional)
-├── .githooks/
-│   └── validate-kestra-structure.sh
+│   └── files/                    # Namespace files (optional)
+├── .husky/
+│   └── pre-commit                # Automatic validation hook
 ├── .github/
 │   └── workflows/
-│       └── kestra-deploy.yml     # Pipeline de deploy
+│       └── kestra-deploy.yml     # Deployment pipeline
 ├── docs/
-│   ├── adding-environments.md    # Como adicionar novos ambientes
-│   └── adding-flows.md           # Como adicionar novos flows
-├── docker-compose.kestra.yml     # Kestra local (desenvolvimento)
-├── package.json                  # Configuração npm/Husky
+│   ├── adding-environments.md    # How to add new environments
+│   └── adding-flows.md           # How to add new flows
+├── docker-compose.kestra.yml     # Local Kestra (development)
+├── package.json                  # npm/Husky configuration
 └── README.MD
 ```
 
-## Como funciona
+## How It Works
 
-### Convenção de pastas → namespace
+### Folder Convention → Namespace
 
-A estrutura de pastas determina automaticamente o namespace do flow:
+The folder structure automatically determines the flow namespace:
 
 ```
 kestra/flows/watxer/_services/github/search_repositories.yml
              └─────────────────────┘ └──────────────────┘
-                  namespace             id do flow
-                  (/ vira .)
+                  namespace             flow id
+                  (/ becomes .)
 ```
 
-No YAML do flow:
+In the flow YAML:
 ```yaml
 id: search_repositories
 namespace: watxer._services.github
 ```
 
-### Validação local
+### Local Validation
 
-O script `scripts/validate.sh` valida:
+The `scripts/validate.sh` script validates:
 
-1. **Estrutura**: `id` e `namespace` batem com caminho/nome do arquivo
-2. **Sintaxe**: executa `flow validate --local` em container Docker efêmero
+1. **Structure**: `id` and `namespace` match file path/name
+2. **Syntax**: executes `flow validate --local` in ephemeral Docker container
 
-Execute manualmente:
+Run manually:
 
 ```bash
-bash ./.githooks/validate-kestra-structure.sh
+npm run validate
+# or directly
+./scripts/validate.sh
 ```
 
-### Deploy automático
+### Automatic Deployment
 
-- Push na branch **`prod`** → deploy para servidor de produção (environment `Production`)
-- Pull requests → apenas validação (não faz deploy)
+- Push to **`prod`** branch → deploy to production server (environment `Production`)
+- Pull requests → validation only (no deployment)
 
-O workflow descobre dinamicamente todos os namespaces e faz deploy de cada um.
+The workflow dynamically discovers all namespaces and deploys each one.
 
-## Comandos úteis
+## Useful Commands
 
-### Validar manualmente
+### Manual Validation
 
 ```bash
 # Via npm script
 npm run validate
 
-# Ou diretamente
+# Or directly
 ./scripts/validate.sh
 ```
 
-### Git hooks
+### Git Hooks
 
-O projeto usa **Husky** para rodar validação automática antes de cada commit:
-- ✅ Valida estrutura de pastas/namespaces
-- ✅ Valida sintaxe YAML dos flows
-- ❌ Bloqueia commit se houver erros
+The project uses **Husky** to run automatic validation before each commit:
+- ✅ Validates folder/namespace structure
+- ✅ Validates YAML syntax of flows
+- ❌ Blocks commit if there are errors
 
-Para bypassar (use com cuidado):
+To bypass (use with caution):
 ```bash
-git commit --no-verify -m "mensagem"
+git commit --no-verify -m "message"
 ```
 
-### Validar sintaxe de um flow
+### Validate Flow Syntax
 
 ```bash
 ./bin/kestra.sh flow validate --local kestra/flows/watxer/_services/github/search_repositories.yml
 ```
 
-### Subir Kestra local
+### Start Local Kestra
 
 ```bash
 docker compose -f docker-compose.kestra.yml up -d
 ```
 
-Acesse em: `http://localhost:8080`
+Access at: `http://localhost:8080`
 
-### Criar atalho local
+### Create Local Alias
 
 ```bash
 alias kestra='./bin/kestra.sh'
 kestra --version
 ```
 
-## GitHub Actions e Environments
+## GitHub Actions and Environments
 
-O repositório usa **GitHub Environments** para separar credenciais por ambiente:
+The repository uses **GitHub Environments** to separate credentials by environment:
 
 - Environment **Production** (branch `prod`)
-  - `KESTRA_HOST`: URL do servidor Kestra de produção
-  - `KESTRA_USER`: Email/usuário
-  - `KESTRA_PASSWORD`: Senha
+  - `KESTRA_HOST`: Kestra server URL
+  - `KESTRA_USER`: Email/username
+  - `KESTRA_PASSWORD`: Password
 
-Para adicionar novos ambientes (staging, dev), consulte: **[docs/adding-environments.md](docs/adding-environments.md)**
+To add new environments (staging, dev), see: **[docs/adding-environments.md](docs/adding-environments.md)**
 
-## Adicionando novos flows
+## Adding New Flows
 
-Siga a convenção de pastas e consulte o guia completo em: **[docs/adding-flows.md](docs/adding-flows.md)**
+Follow the folder convention and see the complete guide at: **[docs/adding-flows.md](docs/adding-flows.md)**
 
-Exemplo rápido:
+Quick example:
 
 ```bash
-# 1. Criar estrutura
+# 1. Create structure
 mkdir -p kestra/flows/watxer/pipelines
 
-# 2. Criar flow
+# 2. Create flow
 cat > kestra/flows/watxer/pipelines/daily_sync.yml << 'EOF'
 id: daily_sync
 namespace: watxer.pipelines
@@ -167,32 +169,32 @@ tasks:
     message: "Syncing..."
 EOF
 
-# 3. Validar
+# 3. Validate
 ./scripts/validate.sh
 
-# 4. Commitar
+# 4. Commit
 git add kestra/flows/watxer/pipelines/daily_sync.yml
 git commit -m "Add daily sync pipeline"
 git push origin prod
 ```
 
-## Documentação
+## Documentation
 
-- **[Adicionando ambientes](docs/adding-environments.md)** - Como criar staging, dev, etc
-- **[Adicionando flows](docs/adding-flows.md)** - Convenções e boas práticas
+- **[Adding Environments](docs/adding-environments.md)** - How to create staging, dev, etc
+- **[Adding Flows](docs/adding-flows.md)** - Conventions and best practices
 
-## Arquitetura de ambientes
+## Environment Architecture
 
-Não existe separação de ambiente por pastas no repositório. O mesmo código é deployado para servidores diferentes, determinados pelo GitHub Environment da branch:
+There is no environment separation by folders in the repository. The same code is deployed to different servers, determined by the GitHub Environment of the branch:
 
 ```
-Repositório (mesma estrutura de flows)
+Repository (same flow structure)
   │
   ├─ branch prod ──────→ Kestra Production (via environment Production)
   │
-  └─ branch staging ───→ Kestra Staging (via environment Staging, quando criado)
+  └─ branch staging ───→ Kestra Staging (via environment Staging, when created)
 ```
 
 ---
 
-**Setup inicial**: valide que tudo funciona rodando `bash ./.githooks/validate-kestra-structure.sh` ✅
+**Initial setup**: validate everything works by running `npm run validate` ✅

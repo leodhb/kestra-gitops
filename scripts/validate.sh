@@ -9,14 +9,14 @@ KESTRA_WRAPPER="./bin/kestra.sh"
 
 echo "🔍 Validating Kestra resources..."
 
-# Função para extrair valor do YAML
+# Function to extract YAML value
 get_yaml_value() {
     local file=$1
     local key=$2
     grep "^${key}:" "$file" | head -1 | sed "s/^${key}:[[:space:]]*//" | tr -d '"' | tr -d "'"
 }
 
-# Validar flows
+# Validate flows
 validate_flow() {
     local file=$1
     local relative_path="${file#$FLOWS_DIR/}"
@@ -52,7 +52,7 @@ validate_flow() {
     fi
 }
 
-# Validar files (estrutura de namespace)
+# Validate files (namespace structure)
 validate_files() {
     echo ""
     echo "📁 Validating files structure..."
@@ -62,7 +62,7 @@ validate_files() {
         return
     fi
     
-    # Verificar que a estrutura de pastas em files/ corresponde a namespaces válidos
+    # Verify that folder structure in files/ corresponds to valid namespaces
     find "$FILES_DIR" -type f | while read -r file; do
         local relative_path="${file#$FILES_DIR/}"
         local namespace_path=$(dirname "$relative_path" | tr '/' '.')
@@ -71,7 +71,7 @@ validate_files() {
     done
 }
 
-# Função para executar validação de sintaxe via wrapper Docker (container efêmero)
+# Function to execute syntax validation via Docker wrapper (ephemeral container)
 run_kestra_validate_file() {
     local file=$1
     local output
@@ -85,7 +85,7 @@ run_kestra_validate_file() {
     return 1
 }
 
-# Validar flows
+# Validate flows
 if [ -d "$FLOWS_DIR" ]; then
     echo "🔍 Validating flows..."
     while IFS= read -r file; do
@@ -93,10 +93,10 @@ if [ -d "$FLOWS_DIR" ]; then
     done < <(find "$FLOWS_DIR" -type f \( -name "*.yml" -o -name "*.yaml" \))
 fi
 
-# Validar files
+# Validate files
 validate_files
 
-# Validação de sintaxe com Kestra no Docker (sempre container efêmero)
+# Syntax validation with Kestra in Docker (always ephemeral container)
 echo ""
 echo "🐳 Validating flow syntax with ephemeral Kestra containers..."
 
@@ -123,7 +123,7 @@ if [ -d "$FLOWS_DIR" ]; then
     done < <(find "$FLOWS_DIR" -type f \( -name "*.yml" -o -name "*.yaml" \))
 fi
 
-# Resultado final
+# Final result
 echo ""
 if [ $ERRORS -eq 0 ]; then
     echo "✅ All validations passed!"

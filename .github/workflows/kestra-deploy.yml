@@ -12,7 +12,7 @@ on:
       - 'kestra/**'
 
 jobs:
-  # Validação em PRs
+  # Validation in PRs
   validate:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
@@ -22,7 +22,7 @@ jobs:
       - name: Validate structure
         run: ./scripts/validate.sh
 
-  # Descobrir namespaces de flows que mudaram
+  # Discover changed flow namespaces
   discover-changed-flow-namespaces:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
@@ -32,7 +32,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          fetch-depth: 2  # Precisamos do commit anterior para diff
+          fetch-depth: 2  # Need previous commit for diff
       
       - name: Find changed flow namespaces
         id: find-namespaces
@@ -45,7 +45,7 @@ jobs:
             exit 0
           fi
           
-          # Pegar arquivos de flows modificados no último push
+          # Get modified flow files from last push
           changed_files=$(git diff --name-only HEAD~1 HEAD -- "$FLOWS_DIR" | grep -E '\.(yml|yaml)$' || true)
           
           if [ -z "$changed_files" ]; then
@@ -58,7 +58,7 @@ jobs:
           echo "Changed flows:"
           echo "$changed_files"
           
-          # Descobrir namespaces únicos dos arquivos modificados
+          # Discover unique namespaces from modified files
           namespaces=$(echo "$changed_files" | while read -r file; do
             if [ -f "$file" ]; then
               dir=$(dirname "$file")
@@ -72,7 +72,7 @@ jobs:
           echo "has_changes=true" >> "$GITHUB_OUTPUT"
           echo "Detected changed namespaces: $namespaces"
 
-  # Deploy flows apenas dos namespaces que mudaram
+  # Deploy flows only for changed namespaces
   deploy-flows:
     if: github.event_name == 'push' && needs.discover-changed-flow-namespaces.outputs.has_changes == 'true'
     needs: discover-changed-flow-namespaces
@@ -95,7 +95,7 @@ jobs:
           password: ${{ secrets.KESTRA_PASSWORD }}
           delete: false
 
-  # Descobrir namespaces de files que mudaram
+  # Discover changed file namespaces
   discover-changed-file-namespaces:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
@@ -118,7 +118,7 @@ jobs:
             exit 0
           fi
           
-          # Pegar arquivos modificados em files/ no último push
+          # Get modified files in files/ from last push
           changed_files=$(git diff --name-only HEAD~1 HEAD -- "$FILES_DIR" || true)
           
           if [ -z "$changed_files" ]; then
@@ -131,7 +131,7 @@ jobs:
           echo "Changed files:"
           echo "$changed_files"
           
-          # Descobrir namespaces únicos (diretórios que contêm os arquivos)
+          # Discover unique namespaces (directories containing the files)
           namespaces=$(echo "$changed_files" | while read -r file; do
             if [ -f "$file" ]; then
               dir=$(dirname "$file")
@@ -145,7 +145,7 @@ jobs:
           echo "has_changes=true" >> "$GITHUB_OUTPUT"
           echo "Detected changed file namespaces: $namespaces"
 
-  # Deploy namespace files usando bin/kestra.sh (contorna bug da action)
+  # Deploy namespace files using bin/kestra.sh (workaround for action bug)
   deploy-files:
     if: github.event_name == 'push' && needs.discover-changed-file-namespaces.outputs.has_changes == 'true'
     needs: discover-changed-file-namespaces
@@ -169,7 +169,7 @@ jobs:
           echo "📦 Deploying files to namespace: $namespace"
           echo "   Directory: $directory"
           
-          # Usar bin/kestra.sh (funciona, ao contrário da action)
+          # Use bin/kestra.sh (works, unlike the action)
           ./bin/kestra.sh namespace files update \
             --server "$KESTRA_HOST" \
             --user "$KESTRA_USER:$KESTRA_PASSWORD" \

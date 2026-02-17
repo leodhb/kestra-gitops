@@ -1,52 +1,52 @@
-# Adicionando novos ambientes
+# Adding New Environments
 
-Este guia explica como adicionar novos ambientes (staging, development, etc) ao setup GitOps do Kestra.
+This guide explains how to add new environments (staging, development, etc) to the Kestra GitOps setup.
 
-## Conceito
+## Concept
 
-Neste repositório, **não existe separação de ambiente por pastas**. A mesma estrutura de flows é deployada para servidores Kestra diferentes, determinados pelos secrets do GitHub Environment.
+In this repository, **there is no environment separation by folders**. The same flow structure is deployed to different Kestra servers, determined by GitHub Environment secrets.
 
-## Passo a passo
+## Step by Step
 
-### 1. Criar GitHub Environment
+### 1. Create GitHub Environment
 
-1. Vá em **Settings → Environments** no repositório
-2. Clique em **New environment**
-3. Dê um nome (ex: `Staging`, `Development`)
-4. Configure proteções se necessário:
-   - **Required reviewers**: exigir aprovação manual antes do deploy
-   - **Wait timer**: atraso antes do deploy
-   - **Deployment branches**: restringir a branches específicas
+1. Go to **Settings → Environments** in the repository
+2. Click **New environment**
+3. Give it a name (e.g., `Staging`, `Development`)
+4. Configure protections if needed:
+   - **Required reviewers**: require manual approval before deployment
+   - **Wait timer**: delay before deployment
+   - **Deployment branches**: restrict to specific branches
 
-### 2. Adicionar secrets ao environment
+### 2. Add Secrets to Environment
 
-Dentro do environment criado, adicione os seguintes secrets:
+Within the created environment, add the following secrets:
 
-| Secret | Descrição | Exemplo |
+| Secret | Description | Example |
 |--------|-----------|---------|
-| `KESTRA_HOST` | URL do servidor Kestra | `https://kestra-staging.exemplo.com` |
-| `KESTRA_USER` | Email/usuário de autenticação | `admin@kestra.io` |
-| `KESTRA_PASSWORD` | Senha de autenticação | `sua-senha-segura` |
+| `KESTRA_HOST` | Kestra server URL | `https://kestra-staging.example.com` |
+| `KESTRA_USER` | Authentication email/username | `admin@kestra.io` |
+| `KESTRA_PASSWORD` | Authentication password | `your-secure-password` |
 
-### 3. Criar branch correspondente
+### 3. Create Corresponding Branch
 
-Crie uma branch no repositório que corresponda ao ambiente:
+Create a branch in the repository that corresponds to the environment:
 
 ```bash
 git checkout -b staging
 git push -u origin staging
 ```
 
-### 4. Adicionar job no workflow
+### 4. Add Job to Workflow
 
-Edite `.github/workflows/kestra-deploy.yml` e adicione um job para o novo ambiente:
+Edit `.github/workflows/kestra-deploy.yml` and add a job for the new environment:
 
 ```yaml
-  # Deploy de flows para staging
+  # Deploy flows for staging
   deploy-flows-staging:
     if: github.event_name == 'push' && github.ref == 'refs/heads/staging'
     runs-on: ubuntu-latest
-    environment: Staging  # Nome do GitHub Environment
+    environment: Staging  # GitHub Environment name
     steps:
       - uses: actions/checkout@v3
       
@@ -59,51 +59,51 @@ Edite `.github/workflows/kestra-deploy.yml` e adicione um job para o novo ambien
           KESTRA_USER: ${{ secrets.KESTRA_USER }}
           KESTRA_PASSWORD: ${{ secrets.KESTRA_PASSWORD }}
         run: |
-          # ... (mesmo script do deploy-flows original)
+          # ... (same script as original deploy-flows)
 ```
 
-Duplique também o job `deploy-files` se você usar namespace files.
+Also duplicate the `deploy-files` job if you use namespace files.
 
-### 5. Testar o deploy
+### 5. Test Deployment
 
-1. Faça commit de uma mudança na branch do novo ambiente
-2. Push para o remote: `git push origin staging`
-3. Acompanhe a execução em **Actions** no GitHub
-4. Verifique no servidor Kestra se os flows foram deployados
+1. Commit a change to the new environment's branch
+2. Push to remote: `git push origin staging`
+3. Monitor execution in **Actions** on GitHub
+4. Verify on the Kestra server that flows were deployed
 
-## Fluxo de trabalho típico
+## Typical Workflow
 
 ```
 ┌──────────────┐
 │ Developer    │
-│ push código  │
+│ push code    │
 └──────┬───────┘
        │
-       ├─── push para staging ──→ Deploy automático para Kestra Staging
+       ├─── push to staging ──→ Automatic deploy to Kestra Staging
        │
-       └─── push para prod ─────→ Deploy automático para Kestra Production
+       └─── push to prod ─────→ Automatic deploy to Kestra Production
 ```
 
-## Boas práticas
+## Best Practices
 
-- **Sempre teste em staging antes de prod**: crie PR de `staging` → `prod`
-- **Proteja a branch prod**: configure branch protection rules para exigir aprovação
-- **Use required reviewers no environment Production**: evita deploys acidentais
-- **Mantenha secrets separados por ambiente**: nunca compartilhe credenciais entre ambientes
-- **Nomeie environments com maiúscula**: `Production`, `Staging` (padrão GitHub)
+- **Always test in staging before prod**: create PR from `staging` → `prod`
+- **Protect prod branch**: configure branch protection rules to require approval
+- **Use required reviewers on Production environment**: prevents accidental deployments
+- **Keep secrets separate per environment**: never share credentials between environments
+- **Name environments with capital letter**: `Production`, `Staging` (GitHub standard)
 
 ## Troubleshooting
 
-### Erro: environment not found
+### Error: environment not found
 
-Verifique se o nome do environment no workflow (`environment: Staging`) bate exatamente com o nome criado no GitHub (case-sensitive).
+Verify that the environment name in the workflow (`environment: Staging`) exactly matches the name created on GitHub (case-sensitive).
 
-### Secrets não são encontrados
+### Secrets not found
 
-- Certifique-se de que os secrets estão no **environment**, não nos repository secrets
-- O job precisa declarar `environment: NomeDoEnvironment` para ter acesso aos secrets
+- Ensure secrets are in the **environment**, not in repository secrets
+- The job must declare `environment: EnvironmentName` to access the secrets
 
-### Deploy não triggera
+### Deployment doesn't trigger
 
-- Verifique se o `if` do job está correto para a branch
-- Confirme que o push foi para a branch monitorada no `on.push.branches`
+- Verify the job's `if` condition is correct for the branch
+- Confirm the push was to the branch monitored in `on.push.branches`

@@ -4,8 +4,7 @@ name: Deploy Kestra Resources
 on:
   push:
     branches:
-      - main
-      - develop
+      - prod
     paths:
       - 'kestra/**'
   pull_request:
@@ -27,51 +26,75 @@ jobs:
   deploy-flows:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Detect flow environments
-        id: flow-envs
-        run: |
-          echo "has_prod=$([ -d kestra/flows/prod ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
-          echo "has_staging=$([ -d kestra/flows/staging ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
-
-      - name: Deploy prod flows
-        if: steps.flow-envs.outputs.has_prod == 'true'
-        uses: kestra-io/deploy-action@v0.22.0
-        with:
-          namespace: prod
-          resource: flow
-          directory: ./kestra/flows/prod
-          server: ${{ secrets.KESTRA_HOST }}
-          user: ${{ secrets.KESTRA_USER }}
-          password: ${{ secrets.KESTRA_PASSWORD }}
-          delete: false
-
-      - name: Deploy staging flows
-        if: steps.flow-envs.outputs.has_staging == 'true'
-        uses: kestra-io/deploy-action@v0.22.0
-        with:
-          namespace: staging
-          resource: flow
-          directory: ./kestra/flows/staging
-          server: ${{ secrets.KESTRA_HOST }}
-          user: ${{ secrets.KESTRA_USER }}
-          password: ${{ secrets.KESTRA_PASSWORD }}
-          delete: false
-
-  # Deploy de files
-  deploy-files:
-    if: github.event_name == 'push'
-    runs-on: ubuntu-latest
-    needs: deploy-flows  # Opcional: rodar depois dos flows
+    environment: Production
     steps:
       - uses: actions/checkout@v3
       
       - name: Install Kestra CLI
         run: curl -s https://get.kestra.io | bash
       
-      - name: Deploy Files to Namespaces
+      - name: Deploy flows to Kestra
+        env:
+          KESTRA_HOST: ${{ secrets.KESTRA_HOST }}
+          KESTRA_USER: ${{ secrets.KESTRA_USER }}
+          KESTRA_PASSWORD: ${{ secrets.KESTRA_PASSWORD }}
+        run: |
+          #!/bin/bash
+          set -e
+          
+          echo "🚀 Deploying flows to Kestra..."
+          
+          FLOWS_DIR="kestra/flows"
+          
+          if [ ! -d "$FLOWS_DIR" ]; then
+            echo "No flows directory found, skipping"
+            exit 0
+          fi
+          
+          # Função para descobrir namespaces únicos
+          discover_namespaces() {
+            find "$FLOWS_DIR" -type f \( -name "*.yml" -o -name "*.yaml" \) | while read -r file; do
+              local dir=$(dirname "$file")
+              local relative_dir="${dir#$FLOWS_DIR/}"
+              
+              # Converter caminho em namespace
+              local namespace=$(echo "$relative_dir" | tr '/' '.')
+              
+              echo "$namespace|$dir"
+            done | sort -u
+          }
+          
+          # Deploy para cada namespace descoberto
+          while IFS='|' read -r namespace dir; do
+            echo ""
+            echo "📦 Deploying namespace: $namespace"
+            echo "   Directory: $dir"
+            
+            kestra flow namespace update \
+              --server "$KESTRA_HOST" \
+              --user "$KESTRA_USER:$KESTRA_PASSWORD" \
+              "$namespace" \
+              "$dir"
+            
+            echo "✅ Namespace $namespace deployed successfully"
+          done < <(discover_namespaces)
+          
+          echo ""
+          echo "✅ All flows deployed successfully!"
+
+  # Deploy de files
+  deploy-files:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: Production
+    needs: deploy-flows
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Install Kestra CLI
+        run: curl -s https://get.kestra.io | bash
+      
+      - name: Deploy namespace files
         env:
           KESTRA_HOST: ${{ secrets.KESTRA_HOST }}
           KESTRA_USER: ${{ secrets.KESTRA_USER }}

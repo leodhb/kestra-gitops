@@ -1,5 +1,5 @@
 id: search_repositories
-namespace: prod.watxer._services.github
+namespace: watxer._services.github
 
 tasks:
   - id: fetch_repos

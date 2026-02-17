@@ -1,0 +1,22 @@
+id: hello_world
+namespace: company
+
+description: Example flow demonstrating the GitOps structure
+
+tasks:
+  - id: log_message
+    type: io.kestra.plugin.core.log.Log
+    message: "Hello from Kestra GitOps! 🚀"
+    
+  - id: log_info
+    type: io.kestra.plugin.core.log.Log
+    message: |
+      This is an example flow.
+      Replace 'company' with your organization name.
+      Add your flows following the namespace convention.
+
+triggers:
+  - id: schedule
+    type: io.kestra.plugin.core.trigger.Schedule
+    cron: "0 9 * * *"  # Daily at 9 AM
+    disabled: true  # Enable when ready

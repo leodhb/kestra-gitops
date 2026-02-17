@@ -17,8 +17,9 @@ id: flow_name
 
 | File Path | Expected Namespace | Expected ID |
 |-------------------|-------------------|-------------|
-| `kestra/flows/watxer/_services/github/search_repositories.yml` | `watxer._services.github` | `search_repositories` |
-| `kestra/flows/watxer/pipelines/daily_sync.yml` | `watxer.pipelines` | `daily_sync` |
+| `kestra/flows/company/hello_world.yml` | `company` | `hello_world` |
+| `kestra/flows/company/_services/github/sync.yml` | `company._services.github` | `sync` |
+| `kestra/flows/company/pipelines/daily_sync.yml` | `company.pipelines` | `daily_sync` |
 | `kestra/flows/analytics/reports/monthly.yml` | `analytics.reports` | `monthly` |
 
 ## Step by Step
@@ -32,7 +33,7 @@ Organize flows by logical namespace. Recommendations:
 - Use descriptive names in lowercase with underscores
 
 ```bash
-mkdir -p kestra/flows/watxer/pipelines
+mkdir -p kestra/flows/company/pipelines
 ```
 
 ### 2. Create Flow File
@@ -40,9 +41,9 @@ mkdir -p kestra/flows/watxer/pipelines
 Create the `.yml` file with the name matching the desired `id`:
 
 ```yaml
-# kestra/flows/watxer/pipelines/daily_sync.yml
+# kestra/flows/company/pipelines/daily_sync.yml
 id: daily_sync
-namespace: watxer.pipelines
+namespace: company.pipelines
 
 description: Daily data synchronization
 
@@ -83,7 +84,7 @@ Use the Docker wrapper to validate a specific flow:
 ### 5. Commit and Push
 
 ```bash
-git add kestra/flows/watxer/pipelines/daily_sync.yml
+git add kestra/flows/company/pipelines/daily_sync.yml
 git commit -m "Add daily sync pipeline"
 git push origin staging  # or prod, depending on environment
 ```
@@ -102,7 +103,7 @@ GitHub Actions will:
 - Avoid too many levels (maximum 4-5 recommended)
 
 **Good:**
-- `watxer._services.github`
+- `company._services.github`
 - `analytics.reports`
 - `etl.daily`
 
@@ -132,7 +133,7 @@ GitHub Actions will:
 
 ```
 kestra/flows/
-  watxer/
+  company/
     sales/          # Sales flows
     marketing/       # Marketing flows
     analytics/       # Analytics flows
@@ -142,7 +143,7 @@ kestra/flows/
 
 ```
 kestra/flows/
-  watxer/
+  company/
     _services/      # External API integrations
     pipelines/      # ETL and data processing
     notifications/  # Alert sending
@@ -152,7 +153,7 @@ kestra/flows/
 
 ```
 kestra/flows/
-  watxer/
+  company/
     _services/
       github/
       slack/
@@ -171,11 +172,11 @@ If the flow uses static files (configs, scripts, etc), place them in `kestra/fil
 ```
 kestra/
   flows/
-    watxer/
+    company/
       pipelines/
-        etl_process.yml          # namespace: watxer.pipelines
+        etl_process.yml          # namespace: company.pipelines
   files/
-    watxer/
+    company/
       pipelines/
         config.json              # Accessible by flow via namespace files
         transform_script.py
@@ -196,8 +197,8 @@ tasks:
 ### Error: namespace mismatch
 
 ```
-❌ kestra/flows/watxer/pipelines/daily_sync.yml
-   Namespace mismatch: expected 'watxer.pipelines', got 'watxer.pipeline'
+❌ kestra/flows/company/pipelines/daily_sync.yml
+   Namespace mismatch: expected 'company.pipelines', got 'company.pipeline'
 ```
 
 **Solution**: Fix the `namespace` in the YAML to match the folder path.
@@ -205,7 +206,7 @@ tasks:
 ### Error: ID mismatch
 
 ```
-❌ kestra/flows/watxer/pipelines/daily_sync.yml
+❌ kestra/flows/company/pipelines/daily_sync.yml
    ID mismatch: expected 'daily_sync', got 'daily-sync'
 ```
 
@@ -214,7 +215,7 @@ tasks:
 ### Invalid Syntax
 
 ```
-❌ Syntax validation failed: kestra/flows/watxer/pipelines/daily_sync.yml
+❌ Syntax validation failed: kestra/flows/company/pipelines/daily_sync.yml
 ```
 
 **Solution**: Run `./bin/kestra.sh flow validate --local <file>` to see detailed error.

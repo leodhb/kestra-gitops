@@ -1,0 +1,8 @@
+# Example Configuration File
+
+This is an example namespace file.
+
+Replace this with your actual configuration files, scripts, or any
+static resources your flows need to reference.
+
+Learn more: docs/adding-flows.md

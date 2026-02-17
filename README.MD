@@ -1,11 +1,20 @@
 # Kestra GitOps Boilerplate
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![GitHub Actions](https://img.shields.io/badge/CI-GitHub%20Actions-blue)](https://github.com/features/actions)
+[![Kestra](https://img.shields.io/badge/Kestra-Latest-purple)](https://kestra.io)
+
+> 🎯 **Template Repository**: [Use this template](../../generate) to create your own Kestra GitOps repository with automatic validation and deployment.
+
 Boilerplate for versioning Kestra flows with local Docker validation and automatic deployment via GitHub Actions.
 
 ## Prerequisites
 
 - Docker installed and running
 - Node.js and npm (for automatic Git hooks)
+- A Kestra instance (self-hosted or cloud)
+
+> **Note**: This is a template repository. After creating your repo from this template, replace example flows in `kestra/flows/company/` with your own flows.
 
 ## Initial Setup
 
@@ -33,11 +42,11 @@ kestra-gitops-test/
 │   └── validate.sh               # Validation script (pre-commit)
 ├── kestra/
 │   ├── flows/                    # Flows organized by namespace
-│   │   └── watxer/
-│   │       └── _services/
-│   │           └── github/
-│   │               └── search_repositories.yml
+│   │   └── company/
+│   │       └── hello_world.yml   # Example flow (replace with yours)
 │   └── files/                    # Namespace files (optional)
+│       └── company/
+│           └── example.txt       # Example file (replace with yours)
 ├── .husky/
 │   └── pre-commit                # Automatic validation hook
 ├── .github/
@@ -58,16 +67,16 @@ kestra-gitops-test/
 The folder structure automatically determines the flow namespace:
 
 ```
-kestra/flows/watxer/_services/github/search_repositories.yml
-             └─────────────────────┘ └──────────────────┘
-                  namespace             flow id
-                  (/ becomes .)
+kestra/flows/company/hello_world.yml
+             └─────┘ └─────────┘
+             namespace  flow id
+             (/ becomes .)
 ```
 
 In the flow YAML:
 ```yaml
-id: search_repositories
-namespace: watxer._services.github
+id: hello_world
+namespace: company
 ```
 
 ### Local Validation
@@ -119,7 +128,7 @@ git commit --no-verify -m "message"
 ### Validate Flow Syntax
 
 ```bash
-./bin/kestra.sh flow validate --local kestra/flows/watxer/_services/github/search_repositories.yml
+./bin/kestra.sh flow validate --local kestra/flows/company/hello_world.yml
 ```
 
 ### Start Local Kestra
@@ -156,12 +165,12 @@ Quick example:
 
 ```bash
 # 1. Create structure
-mkdir -p kestra/flows/watxer/pipelines
+mkdir -p kestra/flows/company/pipelines
 
 # 2. Create flow
-cat > kestra/flows/watxer/pipelines/daily_sync.yml << 'EOF'
+cat > kestra/flows/company/pipelines/daily_sync.yml << 'EOF'
 id: daily_sync
-namespace: watxer.pipelines
+namespace: company.pipelines
 
 tasks:
   - id: sync
@@ -173,7 +182,7 @@ EOF
 ./scripts/validate.sh
 
 # 4. Commit
-git add kestra/flows/watxer/pipelines/daily_sync.yml
+git add kestra/flows/company/pipelines/daily_sync.yml
 git commit -m "Add daily sync pipeline"
 git push origin prod
 ```
@@ -198,3 +207,11 @@ Repository (same flow structure)
 ---
 
 **Initial setup**: validate everything works by running `npm run validate` ✅
+
+## Contributing
+
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.

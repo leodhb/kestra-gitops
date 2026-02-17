@@ -93,8 +93,11 @@ jobs:
             exit 0
           fi
           
-          # Descobrir todos os namespaces de primeiro nível em files/
-          namespaces=$(find "$FILES_DIR" -mindepth 1 -type d | while read -r dir; do
+          # Descobrir apenas diretórios que contêm arquivos (folhas da árvore)
+          namespaces=$(find "$FILES_DIR" -type f | while read -r file; do
+            dir=$(dirname "$file")
+            echo "$dir"
+          done | sort -u | while read -r dir; do
             relative_dir="${dir#$FILES_DIR/}"
             namespace=$(echo "$relative_dir" | tr '/' '.')
             echo "{\"namespace\":\"$namespace\",\"directory\":\"$dir\"}"

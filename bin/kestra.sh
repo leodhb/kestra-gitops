@@ -21,8 +21,26 @@ if [ $# -eq 0 ]; then
     exit 1
 fi
 
+# Create temporary config file
+TEMP_CONFIG=$(mktemp)
+trap "rm -f $TEMP_CONFIG" EXIT
+
+cat > "$TEMP_CONFIG" << EOF
+kestra:
+  repository:
+    type: memory
+  queue:
+    type: memory
+  storage:
+    type: local
+    local:
+      base-path: /tmp/kestra-storage
+EOF
+
 docker run --rm \
     -v "$(pwd):${CONTAINER_WORKDIR}" \
+    -v "$TEMP_CONFIG:/tmp/kestra-config.yml:ro" \
     -w "${CONTAINER_WORKDIR}" \
+    -e MICRONAUT_CONFIG_FILES=/tmp/kestra-config.yml \
     "${KESTRA_IMAGE}" \
     "$@"

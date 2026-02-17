@@ -4,7 +4,7 @@ namespace: watxer._services.github
 tasks:
   - id: fetch_repos
     type: io.kestra.plugin.core.http.Request
-    uri: https://api.github.com/user/repos?type=public&per_page=90
+    uri: https://api.github.com/user/repos?type=public&per_page=100
     headers:
       Authorization: "Bearer {{ kv('GITHUB_PAT') }}"
       Accept: "application/vnd.github.v3+json"

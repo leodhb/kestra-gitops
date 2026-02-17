@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@v3
       
       - name: Validate structure
-        run: ./.githooks/validate-kestra-structure.sh
+        run: ./scripts/validate.sh
 
   # Descobrir namespaces de flows que mudaram
   discover-changed-flow-namespaces:

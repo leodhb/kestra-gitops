@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "prepare": "husky",
-    "validate": "bash ./.githooks/validate-kestra-structure.sh"
+    "validate": "bash ./scripts/validate.sh"
   },
   "devDependencies": {
     "husky": "^9.0.11"

@@ -21,7 +21,7 @@ npm install
 npm run validate
 ```
 
-Após o `npm install`, o **pre-commit hook** é instalado automaticamente via Husky. Toda vez que você commitar, a validação roda automaticamente.
+Após o `npm install`, o **pre-commit hook** é instalado automaticamente via Husky. Toda vez que você commitar, a validação (`scripts/validate.sh`) roda automaticamente.
 
 ## Estrutura do projeto
 
@@ -29,6 +29,8 @@ Após o `npm install`, o **pre-commit hook** é instalado automaticamente via Hu
 kestra-gitops-test/
 ├── bin/
 │   └── kestra.sh                 # Wrapper Docker para CLI do Kestra
+├── scripts/
+│   └── validate.sh               # Script de validação (pre-commit)
 ├── kestra/
 │   ├── flows/                    # Flows organizados por namespace
 │   │   └── watxer/
@@ -45,6 +47,7 @@ kestra-gitops-test/
 │   ├── adding-environments.md    # Como adicionar novos ambientes
 │   └── adding-flows.md           # Como adicionar novos flows
 ├── docker-compose.kestra.yml     # Kestra local (desenvolvimento)
+├── package.json                  # Configuração npm/Husky
 └── README.MD
 ```
 
@@ -69,7 +72,7 @@ namespace: watxer._services.github
 
 ### Validação local
 
-O hook `.githooks/validate-kestra-structure.sh` valida:
+O script `scripts/validate.sh` valida:
 
 1. **Estrutura**: `id` e `namespace` batem com caminho/nome do arquivo
 2. **Sintaxe**: executa `flow validate --local` em container Docker efêmero
@@ -96,7 +99,7 @@ O workflow descobre dinamicamente todos os namespaces e faz deploy de cada um.
 npm run validate
 
 # Ou diretamente
-bash ./.githooks/validate-kestra-structure.sh
+./scripts/validate.sh
 ```
 
 ### Git hooks
@@ -165,7 +168,7 @@ tasks:
 EOF
 
 # 3. Validar
-bash ./.githooks/validate-kestra-structure.sh
+./scripts/validate.sh
 
 # 4. Commitar
 git add kestra/flows/watxer/pipelines/daily_sync.yml

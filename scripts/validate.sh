@@ -7,7 +7,30 @@ FILES_DIR="kestra/files"
 ERRORS=0
 KESTRA_WRAPPER="./bin/kestra.sh"
 
+# Parse arguments
+FILES_TO_VALIDATE=()
+VALIDATE_ALL=true
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --files)
+            VALIDATE_ALL=false
+            shift
+            ;;
+        *)
+            if [ "$VALIDATE_ALL" = false ]; then
+                FILES_TO_VALIDATE+=("$1")
+            fi
+            shift
+            ;;
+    esac
+done
+
 echo "🔍 Validating Kestra resources..."
+
+if [ "$VALIDATE_ALL" = false ]; then
+    echo "📝 Validating ${#FILES_TO_VALIDATE[@]} changed file(s)..."
+fi
 
 # Function to extract YAML value
 get_yaml_value() {
@@ -85,16 +108,49 @@ run_kestra_validate_file() {
     return 1
 }
 
+# Get list of flow files to validate
+get_flow_files() {
+    if [ "$VALIDATE_ALL" = true ]; then
+        find "$FLOWS_DIR" -type f \( -name "*.yml" -o -name "*.yaml" \)
+    else
+        # Filter only flow files from the changed files
+        for file in "${FILES_TO_VALIDATE[@]}"; do
+            if [[ "$file" == $FLOWS_DIR/* ]] && [[ "$file" =~ \.(yml|yaml)$ ]]; then
+                if [ -f "$file" ]; then
+                    echo "$file"
+                fi
+            fi
+        done
+    fi
+}
+
 # Validate flows convention
 if [ -d "$FLOWS_DIR" ]; then
     echo "🔍 Validating flows..."
+    
+    # Count files to validate
+    file_count=0
     while IFS= read -r file; do
         validate_flow "$file"
-    done < <(find "$FLOWS_DIR" -type f \( -name "*.yml" -o -name "*.yaml" \))
+        file_count=$((file_count + 1))
+    done < <(get_flow_files)
+    
+    # Check if no files were found in selective mode
+    if [ "$VALIDATE_ALL" = false ] && [ $file_count -eq 0 ]; then
+        echo "⚠️  No flow files to validate in the provided list"
+        echo "✅ All validations passed!"
+        exit 0
+    fi
 fi
 
 # Validate files
-validate_files
+if [ "$VALIDATE_ALL" = true ]; then
+    validate_files
+else
+    # Skip files validation for changed files mode (less critical)
+    echo ""
+    echo "⏭️  Skipping files structure validation (only runs for full validation)"
+fi
 
 # Check if there were errors in static validation
 if [ $ERRORS -gt 0 ]; then
@@ -128,7 +184,7 @@ if [ -d "$FLOWS_DIR" ]; then
             echo "❌ Syntax validation failed: $file"
             ERRORS=$((ERRORS + 1))
         fi
-    done < <(find "$FLOWS_DIR" -type f \( -name "*.yml" -o -name "*.yaml" \))
+    done < <(get_flow_files)
 fi
 
 # Final result

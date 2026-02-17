@@ -29,8 +29,11 @@ cd kestra-gitops
 # Install dependencies
 npm install
 
-# Validate
+# Validate all flows
 npm run validate
+
+# Or validate specific files only (faster)
+bash ./scripts/validate.sh --files kestra/flows/company/example/flow.yml
 ```
 
 ### Code Style
@@ -47,6 +50,8 @@ Before submitting a PR:
 1. Run `npm run validate` to ensure all checks pass
 2. Test with local Kestra: `docker compose -f docker-compose.kestra.yml up`
 3. Verify workflows syntax (GitHub validates on PR automatically)
+
+**Note:** The pre-commit hook automatically validates only the files you changed, making commits faster. Full validation runs in CI/CD.
 
 ## Questions?
 

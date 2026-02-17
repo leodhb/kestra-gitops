@@ -103,13 +103,27 @@ The `scripts/validate.sh` script validates:
 1. **Structure**: `id` and `namespace` match file path/name
 2. **Syntax**: executes `flow validate --local` in ephemeral Docker container
 
-Run manually:
+#### Validation Modes
 
+**Full validation** (validates all flows):
 ```bash
 npm run validate
-# or directly
+# or
 ./scripts/validate.sh
 ```
+
+**Selective validation** (validates only specific files):
+```bash
+./scripts/validate.sh --files kestra/flows/company/example.yml kestra/flows/company/other.yml
+```
+
+**Performance optimization**: The pre-commit hook automatically validates only the files you changed, making commits much faster. Full validation runs in CI/CD.
+
+**How selective validation works:**
+- Pre-commit hook detects staged `.yml`/`.yaml` files in `kestra/flows/`
+- Passes only those files to the validation script
+- Skips files structure validation (runs only in full mode)
+- Significantly faster for development workflow
 
 ### Automatic Deployment (CI/CD)
 
@@ -124,11 +138,16 @@ After configuring the GitHub Environment (see [Initial Setup](#2-github-environm
 ### Manual Validation
 
 ```bash
-# Via npm script
+# Validate all flows (runs complete validation)
 npm run validate
 
-# Or directly
-./scripts/validate.sh
+# Validate specific files only (much faster for development)
+./scripts/validate.sh --files kestra/flows/company/example.yml
+
+# Validate multiple specific files
+./scripts/validate.sh --files \
+  kestra/flows/company/flow1.yml \
+  kestra/flows/company/flow2.yml
 ```
 
 ### Git Hooks
@@ -136,6 +155,7 @@ npm run validate
 The project uses **Husky** to run automatic validation before each commit:
 - ✅ Validates folder/namespace structure
 - ✅ Validates YAML syntax of flows
+- ⚡ Only validates files you changed (fast!)
 - ❌ Blocks commit if there are errors
 
 To bypass (use with caution):

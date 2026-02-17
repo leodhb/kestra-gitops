@@ -1,0 +1,123 @@
+# .github/workflows/kestra-deploy.yml
+name: Deploy Kestra Resources
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'kestra/**'
+  pull_request:
+    paths:
+      - 'kestra/**'
+
+jobs:
+  # Validação em PRs
+  validate:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Validate structure
+        run: ./.githooks/validate-kestra-structure.sh
+
+  # Deploy de flows
+  deploy-flows:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Detect flow environments
+        id: flow-envs
+        run: |
+          echo "has_prod=$([ -d kestra/flows/prod ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "has_staging=$([ -d kestra/flows/staging ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy prod flows
+        if: steps.flow-envs.outputs.has_prod == 'true'
+        uses: kestra-io/deploy-action@v1
+        with:
+          namespace: prod
+          resource: flow
+          directory: ./kestra/flows/prod
+          server: ${{ secrets.KESTRA_HOST }}
+          user: ${{ secrets.KESTRA_USER }}
+          password: ${{ secrets.KESTRA_PASSWORD }}
+          delete: false
+
+      - name: Deploy staging flows
+        if: steps.flow-envs.outputs.has_staging == 'true'
+        uses: kestra-io/deploy-action@v1
+        with:
+          namespace: staging
+          resource: flow
+          directory: ./kestra/flows/staging
+          server: ${{ secrets.KESTRA_HOST }}
+          user: ${{ secrets.KESTRA_USER }}
+          password: ${{ secrets.KESTRA_PASSWORD }}
+          delete: false
+
+  # Deploy de files
+  deploy-files:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    needs: deploy-flows  # Opcional: rodar depois dos flows
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Install Kestra CLI
+        run: curl -s https://get.kestra.io | bash
+      
+      - name: Deploy Files to Namespaces
+        env:
+          KESTRA_HOST: ${{ secrets.KESTRA_HOST }}
+          KESTRA_USER: ${{ secrets.KESTRA_USER }}
+          KESTRA_PASSWORD: ${{ secrets.KESTRA_PASSWORD }}
+        run: |
+          #!/bin/bash
+          set -e
+          
+          echo "📁 Deploying namespace files..."
+          
+          FILES_DIR="kestra/files"
+          
+          if [ ! -d "$FILES_DIR" ]; then
+            echo "No files directory found, skipping"
+            exit 0
+          fi
+          
+          # Função para fazer upload de arquivos de um namespace
+          upload_namespace_files() {
+            local namespace_path=$1
+            local namespace=$(echo "$namespace_path" | sed "s|^${FILES_DIR}/||" | tr '/' '.')
+            
+            echo ""
+            echo "📦 Namespace: $namespace"
+            
+            # Encontrar todos os arquivos neste namespace
+            find "$namespace_path" -type f | while read -r file; do
+              # Caminho relativo ao namespace
+              local rel_path="${file#$namespace_path/}"
+              
+              echo "  ↗ Uploading: $rel_path"
+              
+              # Upload usando Kestra CLI
+              kestra namespace files update \
+                --server "$KESTRA_HOST" \
+                --user "$KESTRA_USER:$KESTRA_PASSWORD" \
+                "$namespace" \
+                "$rel_path" \
+                "$file"
+            done
+          }
+          
+          # Iterar por todos os namespaces (diretórios de primeiro nível)
+          find "$FILES_DIR" -mindepth 1 -type d | while read -r namespace_dir; do
+            upload_namespace_files "$namespace_dir"
+          done
+          
+          echo ""
+          echo "✅ All files deployed successfully!"
